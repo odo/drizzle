@@ -1,28 +1,30 @@
 defmodule Drizzle do
   @moduledoc """
-  A server for second-granularity execution
-  of jobs from several crontabs
+  A server for second-granularity execution of jobs from several crontabs
   """
   use GenServer
+
+  @execute_fun_every 30
 
   defmodule Record do
     defstruct crontab: nil, module: nil, function: nil, args: nil
   end
 
-  defstruct records: [], last_evaluation: nil, update_interval: nil 
+  defstruct records: [], last_evaluation: nil, update_interval: nil, execution_time_fun: nil
 
   # Initialization
-  def start_link(records, update_interval \\ 500) do
-    GenServer.start_link(__MODULE__, [records, update_interval], [name: __MODULE__])
+  def start_link(records, update_interval \\ 500, last_evaluation \\ nil, evaluation_time_fun \\ fn(_) -> :noop end) do
+    GenServer.start_link(__MODULE__, [records, update_interval, last_evaluation, evaluation_time_fun], [name: __MODULE__])
   end
 
-  def init([records, update_interval]) do
+  def init([records, update_interval, last_evaluation, execution_time_fun]) do
     # we are setting the last time to one second in the past
     # so we start with the current second
     initial_state = %Drizzle{
       records: parse_records(records),
-      last_evaluation: now() - 1,
-      update_interval: update_interval
+      last_evaluation: last_evaluation || now() - 1,
+      update_interval: update_interval,
+      execution_time_fun: execution_time_fun
     }
     schedule_evaluation(0)
     {:ok, initial_state}
@@ -39,14 +41,18 @@ defmodule Drizzle do
     {:noreply, next_state}
   end
 
-  def handle_info(:evaluate, state = %Drizzle{records: records, last_evaluation: last_evaluation, update_interval: update_interval}) do
+  def handle_info(:evaluate, state = %Drizzle{records: records, last_evaluation: last_evaluation, update_interval: update_interval, execution_time_fun: execution_time_fun}) do
     schedule_evaluation(update_interval)
     case {last_evaluation, now()} do 
       {same, same} ->
+        # we are still in the same second, so nothing to do
         {:noreply, state}
       {last, now} ->
+        # we start with the first second after the one we already evaluated
         times = last+1..now |> Enum.map(fn(second) -> time(second) end)
-        execute_for_interval(records, times)
+        executed = execute_for_interval(records, times)
+        # we pass the last time when something was executed
+        if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)), do: spawn(fn() -> execution_time_fun.(now) end) 
         {:noreply, %Drizzle{state | last_evaluation: now}}
     end
   end
@@ -81,11 +87,14 @@ defmodule Drizzle do
   end
 
   defp now() do
-    DateTime.utc_now() |> DateTime.to_gregorian_seconds() |> elem(0)
+    DateTime.utc_now() |> to_seconds() 
   end
 
   defp time(second) do
     DateTime.from_gregorian_seconds(second)
   end
 
+  defp to_seconds(time) do
+    time |> DateTime.to_gregorian_seconds() |> elem(0)
+  end
 end
