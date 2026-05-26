@@ -1,8 +1,94 @@
 defmodule DrizzleTest do
   use ExUnit.Case
   doctest Drizzle
+  import Mock
 
-  test "greets the world" do
-    assert Drizzle.hello() == :world
+  use ExUnit.Case, async: false
+
+  describe "server" do
+    test "starts" do
+      assert {:ok, _pid} = Drizzle.start_link(%{
+  
+      records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: :mod, function: :fun, args: []}],
+      update_interval: 500,
+      last_evaluation: nil,
+      evaluation_time_fun: fn(_) -> :ok end
+      })
+    end
+
+    test "starts with config" do
+      config = 
+        %{
+          records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: :mod, function: :fun, args: []}],
+          update_interval: 80,
+          last_evaluation: nil,
+          evaluation_time_fun: nil
+        }
+      with_mock Drizzle.Config, [get: fn() -> config end] do
+        assert {:ok, _pid} = Drizzle.start_link([])
+      end
+    end
+    
+    test "doesn't start without config" do
+      assert {:error, :invalid_config} == Drizzle.start_link([])
+    end
   end
+
+  describe "triggering jobs" do
+
+    test "triggering every second second" do
+     record = %{
+        crontab: "*/2 * * * * *",
+        time_zone: :utc,
+        module: Process,
+        function: :send,
+        args: [self(), :trigger, []]
+      }
+      {:ok, init_state} = Drizzle.init([[record], 500, 0, nil])
+      assert_receive :evaluate
+      with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> 5 end]}] do
+        {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
+        assert 5 == next_state.last_evaluation
+        assert_receive :trigger
+        assert_receive :trigger
+        refute_receive :trigger
+      end
+      with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> 10 end]}] do
+        {:noreply, next_state} = Drizzle.handle_info(:evaluate, %{init_state|last_evaluation: 5})
+        assert 10 == next_state.last_evaluation
+        assert_receive :trigger
+        assert_receive :trigger
+        assert_receive :trigger
+        refute_receive :trigger
+      end
+    end
+    
+    test "triggering every day at 12:00" do
+     record = %{
+        crontab: "0 0 12 * * *",
+        time_zone: :utc,
+        module: Process,
+        function: :send,
+        args: [self(), :trigger, []]
+      }
+      start = ~U[2026-05-26 11:59:59Z] |> Drizzle.Time.to_seconds()
+      now   = ~U[2026-05-26 12:00:00Z] |> Drizzle.Time.to_seconds()
+
+      {:ok, init_state} = Drizzle.init([[record], 500, start, nil])
+      assert_receive :evaluate
+      with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> now end]}] do
+        {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
+        assert now == next_state.last_evaluation
+        assert_receive :trigger
+        refute_receive :trigger
+      end
+      next_now   = ~U[2026-05-26 12:10:00Z] |> Drizzle.Time.to_seconds()
+      with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> next_now end]}] do
+        {:noreply, next_state} = Drizzle.handle_info(:evaluate, %{init_state|last_evaluation: now})
+        assert next_now == next_state.last_evaluation
+        refute_receive :trigger
+      end
+    end
+  end
+
 end

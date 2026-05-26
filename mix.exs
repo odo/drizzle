@@ -22,7 +22,8 @@ defmodule Drizzle.MixProject do
   defp deps do
     [
       {:cron, "~> 0.1"},
-      {:tz, "~> 0.28"}
+      {:tz, "~> 0.28"},
+      {:mock, "~> 0.3.0", only: :test}
     ]
   end
 end
