@@ -46,7 +46,7 @@ defmodule Drizzle do
   end
 
   # API
-  def update(records) do
+  def update(records) when is_list(records) do
     GenServer.cast(__MODULE__, {:update_records, records})
   end
 
@@ -54,7 +54,7 @@ defmodule Drizzle do
   def handle_cast({:update_records, records}, state) do
     case Parser.parse_records(records) do
       {:ok, records} ->
-        next_state = %{state | records: Parser.parse_records(records)}
+        next_state = %{state | records: records}
         {:noreply, next_state}
       {:error, _} ->
         {:noreply, state}

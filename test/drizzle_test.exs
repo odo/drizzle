@@ -136,4 +136,35 @@ defmodule DrizzleTest do
         refute_receive :trigger
       end
     end
+  describe "updating records" do
+
+    test "malformed records don't crash the server" do
+     broken_record = %{
+        crontab: "0 30 2 * * *",
+        time_zone: "Europe/Schmerlin",
+        module: Process,
+        function: :send,
+        args: [self(), :trigger, []]
+      }
+
+      {:ok, init_state} = Drizzle.init([[], 500, nil, nil])
+      {:noreply, next_state} = Drizzle.handle_cast({:update_records, [broken_record]}, init_state)
+      assert init_state == next_state
+    end
+
+    test "new records are picked up" do
+     record = %{
+        crontab: "0 30 2 * * *",
+        time_zone: "Europe/Berlin",
+        module: Process,
+        function: :send,
+        args: [self(), :trigger, []]
+      }
+
+      {:ok, init_state} = Drizzle.init([[], 500, nil, nil])
+      {:noreply, next_state} = Drizzle.handle_cast({:update_records, [record]}, init_state)
+      assert 1 == length(next_state.records)
+    end
+
+    end
   end
