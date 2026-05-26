@@ -14,7 +14,7 @@ defmodule Drizzle do
     defstruct crontab: nil, time_zone: nil, module: nil, function: nil, args: nil
   end
 
-  defstruct records: [], last_evaluation: nil, update_interval: nil, execution_time_fun: nil
+  defstruct records: [], last_evaluation: nil, update_interval: nil, evaluation_time_fun: nil
 
   # Server functions
   @spec start_link([]) :: {:ok, pid()}
@@ -32,14 +32,14 @@ defmodule Drizzle do
   end
   def start_link(_), do: {:error, :invalid_config}
 
-  def init([records, update_interval, last_evaluation, execution_time_fun]) do
+  def init([records, update_interval, last_evaluation, evaluation_time_fun]) do
     # we are setting the last time to one second in the past
     # so we start with the current second
     initial_state = %Drizzle{
       records: Parser.parse_records!(records),
       last_evaluation: last_evaluation || Time.now() - 1,
       update_interval: update_interval || 500,
-      execution_time_fun: execution_time_fun || fn(_) -> :noop end
+      evaluation_time_fun: evaluation_time_fun || fn(_) -> :noop end
     }
     schedule_evaluation(0)
     {:ok, initial_state}
@@ -61,7 +61,7 @@ defmodule Drizzle do
       end
   end
 
-  def handle_info(:evaluate, state = %Drizzle{records: records, last_evaluation: last_evaluation, update_interval: update_interval, execution_time_fun: execution_time_fun}) do
+  def handle_info(:evaluate, state = %Drizzle{records: records, last_evaluation: last_evaluation, update_interval: update_interval, evaluation_time_fun: evaluation_time_fun}) do
     schedule_evaluation(update_interval)
     case {last_evaluation, Time.now()} do 
       {same, same} ->
@@ -76,7 +76,7 @@ defmodule Drizzle do
         # we start with the first second after the one we already evaluated
         times = last+1..now
         executed = execute_for_interval(records, times)
-        if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)), do: spawn(fn() -> execution_time_fun.(now) end) 
+        if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)), do: spawn(fn() -> evaluation_time_fun.(now) end) 
         {:noreply, %Drizzle{state | last_evaluation: now}}
     end
   end

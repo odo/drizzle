@@ -8,6 +8,7 @@ defmodule Drizzle.Time do
     seconds
     |> DateTime.from_gregorian_seconds()
     |> DateTime.shift_zone!(time_zone)
+    |> DateTime.to_naive()
   end
 
   def to_seconds(%DateTime{} = time) do

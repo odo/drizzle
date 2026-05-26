@@ -9,7 +9,7 @@ defmodule DrizzleTest do
     test "starts" do
       assert {:ok, _pid} = Drizzle.start_link(%{
   
-      records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: :mod, function: :fun, args: []}],
+      records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: Enum, function: :reverse, args: [[]]}],
       update_interval: 500,
       last_evaluation: nil,
       evaluation_time_fun: fn(_) -> :ok end
@@ -19,7 +19,7 @@ defmodule DrizzleTest do
     test "starts with config" do
       config = 
         %{
-          records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: :mod, function: :fun, args: []}],
+          records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: Enum, function: :reverse, args: [[]]}],
           update_interval: 80,
           last_evaluation: nil,
           evaluation_time_fun: nil
@@ -90,5 +90,50 @@ defmodule DrizzleTest do
       end
     end
   end
+  
+  describe "timezones" do
 
-end
+    test "trigger during daylight saving time 2h past UTC" do
+     record = %{
+        crontab: "0 0 16 * * *",
+        time_zone: "Europe/Berlin",
+        module: Process,
+        function: :send,
+        args: [self(), :trigger, []]
+      }
+      start = ~U[2026-05-26 13:59:59Z] |> Drizzle.Time.to_seconds()
+      now   = ~U[2026-05-26 14:00:00Z] |> Drizzle.Time.to_seconds()
+
+      {:ok, init_state} = Drizzle.init([[record], 500, start, nil])
+      assert_receive :evaluate
+      with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> now end]}] do
+        {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
+        assert now == next_state.last_evaluation
+        assert_receive :trigger
+        refute_receive :trigger
+      end
+    end
+  end
+
+  test "on the day when daylight saving time ends the hour between 2am ans 3am happens twice" do
+     record = %{
+        crontab: "0 30 2 * * *",
+        time_zone: "Europe/Berlin",
+        module: Process,
+        function: :send,
+        args: [self(), :trigger, []]
+      }
+      start = ~U[2025-10-25 23:59:59Z] |> Drizzle.Time.to_seconds()
+      now   = ~U[2025-10-26 02:00:00Z] |> Drizzle.Time.to_seconds()
+
+      {:ok, init_state} = Drizzle.init([[record], 500, start, nil])
+      assert_receive :evaluate
+      with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> now end]}] do
+        {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
+        assert now == next_state.last_evaluation
+        assert_receive :trigger
+        assert_receive :trigger
+        refute_receive :trigger
+      end
+    end
+  end
