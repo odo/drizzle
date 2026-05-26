@@ -1,3 +1,4 @@
 %{
   "cron": {:hex, :cron, "0.1.0", "2ed3db1895a959c2392b80cfa68ad2f7a882b8137df056dcb0d826f0a628e4cd", [:mix], [], "hexpm", "a69ddcfd0c2ffc1016aee33770f0f57da6b40acd3e00a2c7070998bec116c09e"},
+  "tz": {:hex, :tz, "0.28.1", "717f5ffddfd1e475e2a233e221dc0b4b76c35c4b3650b060c8e3ba29dd6632e9", [:mix], [{:castore, "~> 0.1 or ~> 1.0", [hex: :castore, repo: "hexpm", optional: true]}, {:mint, "~> 1.6", [hex: :mint, repo: "hexpm", optional: true]}], "hexpm", "bfdca1aa1902643c6c43b77c1fb0cb3d744fd2f09a8a98405468afdee0848c8a"},
 }

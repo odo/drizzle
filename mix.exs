@@ -21,7 +21,8 @@ defmodule Drizzle.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:cron, "~> 0.1"}
+      {:cron, "~> 0.1"},
+      {:tz, "~> 0.28"}
     ]
   end
 end
