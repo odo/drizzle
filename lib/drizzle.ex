@@ -1,6 +1,6 @@
 defmodule Drizzle do
   @moduledoc """
-  A server for second-granularity execution of jobs from several crontabs
+  A server for second-granularity execution of jobs from a cron tab
   """
   use GenServer
 
@@ -24,9 +24,9 @@ defmodule Drizzle do
 
   # Initialization
   def start_link(%{
-    records: records,
-    update_interval: update_interval,
-    last_evaluation: last_evaluation,
+    records:             records,
+    update_interval:     update_interval,
+    last_evaluation:     last_evaluation,
     evaluation_time_fun: evaluation_time_fun}) when is_list(records) do
     GenServer.start_link(__MODULE__, [records, update_interval, last_evaluation, evaluation_time_fun], [name: __MODULE__])
   end
@@ -36,9 +36,9 @@ defmodule Drizzle do
     # we are setting the last time to one second in the past
     # so we start with the current second
     initial_state = %Drizzle{
-      records: Parser.parse_records!(records),
-      last_evaluation: last_evaluation || Time.now() - 1,
-      update_interval: update_interval || 500,
+      records:             Parser.parse_records!(records),
+      last_evaluation:     last_evaluation || Time.now() - 1,
+      update_interval:     update_interval || 999,
       evaluation_time_fun: evaluation_time_fun || fn(_) -> :noop end
     }
     schedule_evaluation(0)
@@ -68,14 +68,13 @@ defmodule Drizzle do
         # we are still in the same second, so nothing to do
         {:noreply, state}
       {last, now} when last > now ->
-        # for some reason the the last evaluation is in the future
+        # for some reason the last evaluation is in the future
         # we reset it to now
         Logger.error("last evaluation is #{last - now}s in the future - resetting.")
         {:noreply, %Drizzle{state | last_evaluation: now}}
       {last, now} ->
         # we start with the first second after the one we already evaluated
-        times = last+1..now
-        executed = execute_for_interval(records, times)
+        executed = last+1..now |> execute_for_interval(records)
         if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)), do: spawn(fn() -> evaluation_time_fun.(now) end) 
         {:noreply, %Drizzle{state | last_evaluation: now}}
     end
@@ -86,7 +85,7 @@ defmodule Drizzle do
     Process.send_after(self(), :evaluate, delay)
   end
 
-  defp execute_for_interval(records, times) do
+  defp execute_for_interval(times, records) do
     for time <- times, record = %Record{crontab: crontab, time_zone: time_zone} <- records do
       if Cron.match?(crontab, Time.from_seconds(time, time_zone)), do: execute(record)
     end
