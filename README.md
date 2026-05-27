@@ -52,7 +52,7 @@ Please note that you need to configure a time zone DB to do this.
 
 These keys are optional:
 - `update_interval` [ms]: how often Drizzle checks the clock (larger numbers are less precise, small numbers are wasteful)
-- `last_evaluation`: the last known output of `evaluation_time_fun` (see below)
+- `last_evaluation`: the last known input to `evaluation_time_fun` (see below)
 - `evaluation_time_fun`: a function to store the time stamp of the last evaluation (see below)
 
 Drizzle counts time in Gregorian seconds (as in `DateTime.utc_now |> DateTime.to_gregorian_seconds |> elem(0)`). The problem is that when the application is stopped for restarts or upgrades, some seconds might not be observed. If you use `evaluation_time_fun` to capture and store this time, you can later pass it to `last_evaluation` so Drizzle can catch up and potentially trigger jobs that where scheduled while it was out.
