@@ -42,7 +42,6 @@ config :drizzle,
         function: :puts,
         args: ["cheers from down under"]
       }],
-      update_interval: 5_000,
       last_evaluation: (case File.read("/tmp/drizzle_time") do {:error, _} -> nil; {:ok, time} -> String.to_integer(time) end),
       evaluation_time_fun: fn(time) -> File.write!("/tmp/drizzle_time", inspect(time)) end
 ```
@@ -51,7 +50,6 @@ Here we are greeting every Saturday at 8pm Australian Central Standard Time.
 Please note that you need to configure a time zone DB to do this.
 
 These keys are optional:
-- `update_interval` [ms]: how often Drizzle checks the clock (larger numbers are less precise, small numbers are wasteful)
 - `last_evaluation`: the last known input to `evaluation_time_fun` (see below)
 - `evaluation_time_fun`: a function to store the time stamp of the last evaluation (see below)
 

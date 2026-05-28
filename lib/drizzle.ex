@@ -14,7 +14,7 @@ defmodule Drizzle do
     defstruct crontab: nil, time_zone: nil, module: nil, function: nil, args: nil
   end
 
-  defstruct records: [], last_evaluation: nil, update_interval: nil, evaluation_time_fun: nil
+  defstruct records: [], last_evaluation: nil, evaluation_time_fun: nil
 
   # Server functions
   @spec start_link([]) :: {:ok, pid()}
@@ -25,20 +25,18 @@ defmodule Drizzle do
   # Initialization
   def start_link(%{
     records:             records,
-    update_interval:     update_interval,
     last_evaluation:     last_evaluation,
     evaluation_time_fun: evaluation_time_fun}) when is_list(records) do
-    GenServer.start_link(__MODULE__, [records, update_interval, last_evaluation, evaluation_time_fun], [name: __MODULE__])
+    GenServer.start_link(__MODULE__, [records, last_evaluation, evaluation_time_fun], [name: __MODULE__])
   end
   def start_link(_), do: {:error, :invalid_config}
 
-  def init([records, update_interval, last_evaluation, evaluation_time_fun]) do
+  def init([records, last_evaluation, evaluation_time_fun]) do
     # we are setting the last time to one second in the past
     # so we start with the current second
     initial_state = %Drizzle{
       records:             Parser.parse_records!(records),
-      last_evaluation:     last_evaluation || Time.now() - 1,
-      update_interval:     update_interval || 999,
+      last_evaluation:     last_evaluation || (Time.now() |> elem(0)) - 1,
       evaluation_time_fun: evaluation_time_fun || fn(_) -> :noop end
     }
     schedule_evaluation(0)
@@ -61,9 +59,10 @@ defmodule Drizzle do
       end
   end
 
-  def handle_info(:evaluate, state = %Drizzle{last_evaluation: last_evaluation, update_interval: update_interval}) do
-    schedule_evaluation(update_interval)
-    case {last_evaluation, Time.now()} do 
+  def handle_info(:evaluate, state = %Drizzle{last_evaluation: last_evaluation}) do
+    {now, microseconds} = Time.now()
+    schedule_evaluation((1_000_000 - microseconds) / 1_000)
+    case {last_evaluation, now} do 
       {same, same} ->
         # we are still in the same second, so nothing to do
         {:noreply, state}
@@ -89,7 +88,7 @@ defmodule Drizzle do
   end
 
   defp schedule_evaluation(delay) do
-    Process.send_after(self(), :evaluate, delay)
+    Process.send_after(self(), :evaluate, trunc(delay))
   end
 
   defp execute_for_interval(times, records) do
