@@ -61,7 +61,7 @@ defmodule Drizzle do
       end
   end
 
-  def handle_info(:evaluate, state = %Drizzle{records: records, last_evaluation: last_evaluation, update_interval: update_interval, evaluation_time_fun: evaluation_time_fun}) do
+  def handle_info(:evaluate, state = %Drizzle{last_evaluation: last_evaluation, update_interval: update_interval}) do
     schedule_evaluation(update_interval)
     case {last_evaluation, Time.now()} do 
       {same, same} ->
@@ -73,14 +73,18 @@ defmodule Drizzle do
         Logger.error("last evaluation is #{last - now}s in the future - resetting.")
         {:noreply, %Drizzle{state | last_evaluation: now}}
       {last, now} ->
-        # we start with the first second after the one we already evaluated
-        executed = last+1..now |> execute_for_interval(records)
-        if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)), do: spawn(fn() -> evaluation_time_fun.(now) end) 
+        evaluate(last, now, state)
         {:noreply, %Drizzle{state | last_evaluation: now}}
     end
   end
- 
+
   # Internal
+  defp evaluate(last, now, %Drizzle{records: records, evaluation_time_fun: evaluation_time_fun}) do
+    # we start with the first second after the one we already evaluated
+    executed = last+1..now |> execute_for_interval(records)
+    if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)), do: spawn(fn() -> evaluation_time_fun.(now) end) 
+  end
+
   defp schedule_evaluation(delay) do
     Process.send_after(self(), :evaluate, delay)
   end
