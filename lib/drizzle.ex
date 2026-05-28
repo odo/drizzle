@@ -82,7 +82,10 @@ defmodule Drizzle do
   defp evaluate(last, now, %Drizzle{records: records, evaluation_time_fun: evaluation_time_fun}) do
     # we start with the first second after the one we already evaluated
     executed = last+1..now |> execute_for_interval(records)
-    if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)), do: spawn(fn() -> evaluation_time_fun.(now) end) 
+    # maybe we want to persist the time stamp
+    if (Enum.any?(executed) or (rem(now, @execute_fun_every) == 0)) do
+      spawn(fn() -> evaluation_time_fun.(now) end)
+    end
   end
 
   defp schedule_evaluation(delay) do
