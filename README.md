@@ -65,6 +65,28 @@ You can update the cron tab at runtime:
 Drizzle evaluates the cron tab for each second.
 On a modern machine evaluating one year (31536000 seconds) for one cron tab line takes about 30 CPU seconds.
 
+## Accuracy
+Drizzle tries to trigger jobs as early during the corresponding second as possible but there are no guarantees. Under heavy load, triggering might be delayed due to how scheduling works in the BEAM.
+
+Here are typical times for triggers between 0.8ms and 16ms after the second:
+
+```elixir
+~U[2026-06-01 06:10:18.003031Z]
+~U[2026-06-01 06:10:19.001435Z]
+~U[2026-06-01 06:10:20.001111Z]
+~U[2026-06-01 06:10:21.004924Z]
+~U[2026-06-01 06:10:22.000842Z]
+~U[2026-06-01 06:10:23.001319Z]
+~U[2026-06-01 06:10:24.016850Z]
+~U[2026-06-01 06:10:25.001041Z]
+~U[2026-06-01 06:10:26.000944Z]
+~U[2026-06-01 06:10:27.001133Z]
+~U[2026-06-01 06:10:28.001860Z]
+~U[2026-06-01 06:10:29.000957Z]
+~U[2026-06-01 06:10:30.000943Z]
+~U[2026-06-01 06:10:31.000732Z]
+```
+
 ## Installation
 
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
