@@ -7,6 +7,7 @@ defmodule Drizzle.MixProject do
       version: "0.1.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
+      package: package(),
       deps: deps()
     ]
   end
@@ -25,6 +26,15 @@ defmodule Drizzle.MixProject do
       {:cron, "~> 0.1"},
       {:tz, "~> 0.28"},
       {:mock, "~> 0.3.0", only: :test}
+    ]
+  end
+  
+  defp package() do
+    [
+     name: "drizzle",
+     description: "Schedule tasks with seconds precision",
+     links: %{"GitHub" => "https://github.com/odo/drizzle"},
+     licenses: ["MIT"],
     ]
   end
 end
