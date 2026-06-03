@@ -1,4 +1,7 @@
 defmodule Drizzle.Time do
+  @moduledoc """
+  This module deals with time
+  """
 
   def now() do
     DateTime.utc_now()

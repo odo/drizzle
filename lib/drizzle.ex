@@ -11,9 +11,44 @@ defmodule Drizzle do
   @execute_fun_every 30
 
   defmodule Record do
+    @moduledoc """
+    Represents a job record to be executed by Drizzle.
+    """
+
+    @typedoc """
+    ## Fields
+    - `:crontab` – The cron expression defining the job's schedule.
+    - `:time_zone` – The time zone for the cron expression (e.g., `"UTC"` or `"Europe/Berlin"`).
+    - `:module` – The module containing the function to execute.
+    - `:function` – The function to call in the module (as an atom).
+    - `:args` – A list of arguments to pass to the function.
+    """
+
+    @type t :: %__MODULE__{
+      crontab: String.t(),
+      time_zone: String.t() | nil,
+      module: module(),
+      function: atom(),
+      args: list(any())
+    }
+
     defstruct crontab: nil, time_zone: nil, module: nil, function: nil, args: nil
   end
 
+  @typedoc """
+  The main struct for the Drizzle GenServer, managing job execution state.
+
+  ## Fields
+  - `:records` – A list of `Drizzle.Record` structs, each defining a job to be executed according to its cron schedule.
+  - `:last_evaluation` – The timestamp (in seconds) of the last evaluation cycle. Used to catch up on time spent offline.
+  - `:evaluation_time_fun` – A function called after each execution and every 30s, used to perst the evaluation timestamp. Accepts the current timestamp (in seconds) as an argument.
+  """
+
+  @type t :: %__MODULE__{
+    records: list(Record.t()),
+    last_evaluation: integer(),
+    evaluation_time_fun: (integer() -> any())
+  }
   defstruct records: [], last_evaluation: nil, evaluation_time_fun: nil
 
   # Server functions

@@ -1,4 +1,8 @@
 defmodule Drizzle.Parser do
+  @moduledoc """
+  This module parses the records that are provided with the config
+  or are reloaded at runtime.
+  """
 
   @validation_time NaiveDateTime.new!(1970, 1, 1, 0, 0, 0)
   require Logger
