@@ -26,7 +26,7 @@ defmodule Drizzle do
 
     @type t :: %__MODULE__{
       crontab: String.t(),
-      time_zone: String.t() | nil,
+      time_zone: String.t() | :utc,
       module: module(),
       function: atom(),
       args: list(any())
@@ -58,6 +58,7 @@ defmodule Drizzle do
   end
 
   # Initialization
+  @spec start_link(__MODULE__.t()) :: {:ok, pid()}
   def start_link(%{
     records:             records,
     last_evaluation:     last_evaluation,
@@ -79,6 +80,8 @@ defmodule Drizzle do
   end
 
   # API
+  @spec update([Record.t()]) :: :ok
+  @doc "Update the crontab during runtime."
   def update(records) when is_list(records) do
     GenServer.cast(__MODULE__, {:update_records, records})
   end

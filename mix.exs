@@ -25,7 +25,8 @@ defmodule Drizzle.MixProject do
     [
       {:cron, "~> 0.1"},
       {:tz, "~> 0.28"},
-      {:mock, "~> 0.3.0", only: :test}
+      {:mock, "~> 0.3.0", only: :test},
+      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]
   end
   
