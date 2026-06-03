@@ -1,12 +1,14 @@
 defmodule Drizzle.Application do
   use Application
 
+  @env Mix.env()
+
   @impl true
   def start(_type, _args) do
     children =
-      case Mix.env() do
+      case @env do
         :test -> []
-          _   -> [Drizzle]
+          _ -> [Drizzle]
       end
     Supervisor.start_link(
       children,
