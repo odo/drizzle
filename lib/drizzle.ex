@@ -143,7 +143,7 @@ defmodule Drizzle do
      time
   end
   defp last_evaluation_to_time(time_fun) when is_function(time_fun, 0) do
-    time_fun.() 
+    time_fun.() |> last_evaluation_to_time()
   end
   defp last_evaluation_to_time(nil) do
      (Time.now() |> elem(0)) - 1
