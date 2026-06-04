@@ -63,7 +63,7 @@ defmodule Drizzle do
     records:             records,
     last_evaluation:     last_evaluation,
     evaluation_time_fun: evaluation_time_fun}) when is_list(records) do
-    GenServer.start_link(__MODULE__, [records, last_evaluation, evaluation_time_fun], [name: __MODULE__])
+    GenServer.start_link(__MODULE__, [records, last_evaluation_to_time(last_evaluation), evaluation_time_fun], [name: __MODULE__])
   end
   def start_link(_), do: {:error, :invalid_config}
 
