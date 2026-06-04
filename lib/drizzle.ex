@@ -46,7 +46,7 @@ defmodule Drizzle do
 
   @type t :: %__MODULE__{
     records: list(Record.t()),
-    last_evaluation: integer() | nil | (() -> integer()),
+    last_evaluation: integer() | nil | (() -> integer() | nil),
     evaluation_time_fun: (integer() -> any())
   }
   defstruct records: [], last_evaluation: nil, evaluation_time_fun: nil
