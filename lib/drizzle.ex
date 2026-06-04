@@ -46,7 +46,7 @@ defmodule Drizzle do
 
   @type t :: %__MODULE__{
     records: list(Record.t()),
-    last_evaluation: integer(),
+    last_evaluation: integer() | nil | (() -> integer()),
     evaluation_time_fun: (integer() -> any())
   }
   defstruct records: [], last_evaluation: nil, evaluation_time_fun: nil
@@ -72,7 +72,7 @@ defmodule Drizzle do
     # so we start with the current second
     initial_state = %Drizzle{
       records:             Parser.parse_records!(records),
-      last_evaluation:     last_evaluation || (Time.now() |> elem(0)) - 1,
+      last_evaluation:     last_evaluation_to_time(last_evaluation),
       evaluation_time_fun: evaluation_time_fun || fn(_) -> :noop end
     }
     schedule_evaluation(0)
@@ -137,6 +137,16 @@ defmodule Drizzle do
 
   defp execute(%Record{module: module, function: function, args: args}) do
     spawn(fn() -> apply(module, function, args) end)
+  end
+
+  defp last_evaluation_to_time(time) when is_integer(time) do
+     time
+  end
+  defp last_evaluation_to_time(time_fun) when is_function(time_fun, 0) do
+    time_fun.() 
+  end
+  defp last_evaluation_to_time(nil) do
+     (Time.now() |> elem(0)) - 1
   end
 
 end

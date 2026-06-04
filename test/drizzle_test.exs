@@ -34,6 +34,22 @@ defmodule DrizzleTest do
 
   describe "triggering jobs" do
 
+    test "initilzed with nil last_evaluation" do
+      {:ok, init_state} = Drizzle.init([[], nil, nil])
+      le = init_state.last_evaluation
+      assert is_integer(le)
+    end
+    
+    test "initilzed with integer last_evaluation" do
+      {:ok, init_state} = Drizzle.init([[], 42, nil])
+      assert 42 == init_state.last_evaluation
+    end
+    
+    test "initilzed with fun last_evaluation" do
+      {:ok, init_state} = Drizzle.init([[], fn() -> 13 end, nil])
+      assert 13 == init_state.last_evaluation
+    end
+
     test "triggering every second second" do
      record = %{
         crontab: "*/2 * * * * *",

@@ -53,7 +53,7 @@ These keys are optional:
 - `last_evaluation`: the last known input to `evaluation_time_fun` (see below)
 - `evaluation_time_fun`: a function to store the time stamp of the last evaluation (see below)
 
-Drizzle counts time in Gregorian seconds (as in `DateTime.utc_now |> DateTime.to_gregorian_seconds |> elem(0)`). The problem is that when the application is stopped for restarts or upgrades, some seconds might not be observed. If you use `evaluation_time_fun` to capture and store this time, you can later pass it to `last_evaluation` so Drizzle can catch up and potentially trigger jobs that where scheduled while it was out.
+Drizzle counts time in Gregorian seconds (as in `DateTime.utc_now |> DateTime.to_gregorian_seconds |> elem(0)`). The problem is that when the application is stopped for restarts or upgrades, some seconds might not be observed. If you use `evaluation_time_fun` to capture and store this time, you can later pass an integer or a function with arity 0 as `last_evaluation` so Drizzle can catch up and potentially trigger jobs that where scheduled while it was out.
 
 `evaluation_time_fun` will be called whenever a job is executed and every 30 seconds.
 
