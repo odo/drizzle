@@ -43,7 +43,8 @@ config :drizzle,
         args: ["cheers from down under"]
       }],
       last_evaluation: (case File.read("/tmp/drizzle_time") do {:error, _} -> nil; {:ok, time} -> String.to_integer(time) end),
-      evaluation_time_fun: fn(time) -> File.write!("/tmp/drizzle_time", inspect(time)) end
+      evaluation_time_fun: fn(time) -> File.write!("/tmp/drizzle_time", inspect(time)) end,
+      start: false
 ```
 
 Here we are greeting every Saturday at 8pm Australian Central Standard Time.
@@ -52,6 +53,7 @@ Please note that you need to configure a time zone DB to do this.
 These keys are optional:
 - `last_evaluation`: the last known input to `evaluation_time_fun` (see below)
 - `evaluation_time_fun`: a function to store the time stamp of the last evaluation (see below)
+- `start` if set to `false` prevents the app from starting and you can start `Drizzle` under your Supervisor (might be needed to solve chicken-and-egg problems with `last_evaluation` functions)
 
 Drizzle counts time in Gregorian seconds (as in `DateTime.utc_now |> DateTime.to_gregorian_seconds |> elem(0)`). The problem is that when the application is stopped for restarts or upgrades, some seconds might not be observed. If you use `evaluation_time_fun` to capture and store this time, you can later pass an integer or a function with arity 0 as `last_evaluation` so Drizzle can catch up and potentially trigger jobs that where scheduled while it was out.
 
