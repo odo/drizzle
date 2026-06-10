@@ -11,7 +11,8 @@ defmodule DrizzleTest do
   
       records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: Enum, function: :reverse, args: [[]]}],
       last_evaluation: nil,
-      evaluation_time_fun: fn(_) -> :ok end
+      evaluation_time_fun: fn(_) -> :ok end,
+      wait_for_update: false
       })
     end
 
@@ -20,7 +21,8 @@ defmodule DrizzleTest do
         %{
           records: [%{crontab: "* * * * * *", time_zone: "Europe/Berlin", module: Enum, function: :reverse, args: [[]]}],
           last_evaluation: nil,
-          evaluation_time_fun: nil
+          evaluation_time_fun: nil,
+          wait_for_update: false
         }
       with_mock Drizzle.Config, [get: fn() -> config end] do
         assert {:ok, _pid} = Drizzle.start_link([])
@@ -35,18 +37,18 @@ defmodule DrizzleTest do
   describe "triggering jobs" do
 
     test "initilzed with nil last_evaluation" do
-      {:ok, init_state} = Drizzle.init([[], nil, nil])
+      {:ok, init_state} = Drizzle.init([[], nil, nil, false])
       le = init_state.last_evaluation
       assert is_integer(le)
     end
     
     test "initilzed with integer last_evaluation" do
-      {:ok, init_state} = Drizzle.init([[], 42, nil])
+      {:ok, init_state} = Drizzle.init([[], 42, nil, false])
       assert 42 == init_state.last_evaluation
     end
     
     test "initilzed with fun last_evaluation" do
-      {:ok, init_state} = Drizzle.init([[], fn() -> 13 end, nil])
+      {:ok, init_state} = Drizzle.init([[], fn() -> 13 end, nil, false])
       assert 13 == init_state.last_evaluation
     end
 
@@ -58,7 +60,7 @@ defmodule DrizzleTest do
         function: :send,
         args: [self(), :trigger, []]
       }
-      {:ok, init_state} = Drizzle.init([[record], 0, nil])
+      {:ok, init_state} = Drizzle.init([[record], 0, nil, false])
       assert_receive :evaluate
       with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> {5, 0} end]}] do
         {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
@@ -88,7 +90,7 @@ defmodule DrizzleTest do
       start = ~U[2026-05-26 11:59:59Z] |> to_seconds()
       now   = ~U[2026-05-26 12:00:00Z] |> to_seconds()
 
-      {:ok, init_state} = Drizzle.init([[record], start, nil])
+      {:ok, init_state} = Drizzle.init([[record], start, nil, false])
       assert_receive :evaluate
       with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> {now, 0} end]}] do
         {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
@@ -104,7 +106,34 @@ defmodule DrizzleTest do
       end
     end
   end
-  
+ 
+  describe "waiting for update" do
+    test "does wait" do
+
+     record = %{
+        crontab: "30 * * * * *",
+        time_zone: :utc,
+        module: Process,
+        function: :send,
+        args: [self(), :trigger, []]
+      }
+      start = ~U[2026-05-26 11:59:00Z] |> to_seconds()
+      now   = ~U[2026-05-26 12:00:00Z] |> to_seconds()
+
+      {:ok, init_state} = Drizzle.init([[record], start, nil, true])
+      refute_receive :evaluate
+      with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> {now, 0} end]}] do
+        {:noreply, next_state} = Drizzle.handle_cast({:update_records, [record]}, init_state)
+        assert_receive :evaluate
+        {:noreply, _next_state} = Drizzle.handle_info(:evaluate, next_state)
+        assert_receive :trigger
+        assert_receive :evaluate, 1100
+        refute_receive :trigger
+        refute_receive :evaluate
+      end
+
+    end
+  end
   describe "timezones" do
 
     test "trigger during daylight saving time 2h past UTC" do
@@ -118,7 +147,7 @@ defmodule DrizzleTest do
       start = ~U[2026-05-26 13:59:59Z] |> to_seconds()
       now   = ~U[2026-05-26 14:00:00Z] |> to_seconds()
 
-      {:ok, init_state} = Drizzle.init([[record], start, nil])
+      {:ok, init_state} = Drizzle.init([[record], start, nil, false])
       assert_receive :evaluate
       with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> {now, 0} end]}] do
         {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
@@ -140,7 +169,7 @@ defmodule DrizzleTest do
       start = ~U[2025-10-25 23:59:59Z] |> to_seconds()
       now   = ~U[2025-10-26 02:00:00Z] |> to_seconds()
 
-      {:ok, init_state} = Drizzle.init([[record], start, nil])
+      {:ok, init_state} = Drizzle.init([[record], start, nil, false])
       assert_receive :evaluate
       with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> {now, 0} end]}] do
         {:noreply, next_state} = Drizzle.handle_info(:evaluate, init_state)
@@ -161,7 +190,7 @@ defmodule DrizzleTest do
         args: [self(), :trigger, []]
       }
 
-      {:ok, init_state} = Drizzle.init([[], nil, nil])
+      {:ok, init_state} = Drizzle.init([[], nil, nil, false])
       {:noreply, next_state} = Drizzle.handle_cast({:update_records, [broken_record]}, init_state)
       assert init_state == next_state
     end
@@ -175,7 +204,7 @@ defmodule DrizzleTest do
         args: [self(), :trigger, []]
       }
 
-      {:ok, init_state} = Drizzle.init([[], nil, nil])
+      {:ok, init_state} = Drizzle.init([[], nil, nil, false])
       {:noreply, next_state} = Drizzle.handle_cast({:update_records, [record]}, init_state)
       assert 1 == length(next_state.records)
     end

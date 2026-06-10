@@ -42,14 +42,16 @@ defmodule Drizzle do
   - `:records` – A list of `Drizzle.Record` structs, each defining a job to be executed according to its cron schedule.
   - `:last_evaluation` – The timestamp (in seconds) of the last evaluation cycle. Used to catch up on time spent offline.
   - `:evaluation_time_fun` – A function called after each execution and every 30s, used to perst the evaluation timestamp. Accepts the current timestamp (in seconds) as an argument.
+  - `:wait_for_update` - Does not evaluate or catch up before `update/1` is called. Useful for dynamic configuration.
   """
 
   @type t :: %__MODULE__{
     records: list(Record.t()),
     last_evaluation: integer() | nil | (() -> integer() | nil),
-    evaluation_time_fun: (integer() -> any())
+    evaluation_time_fun: (integer() -> any()),
+    wait_for_update: nil | true | false
   }
-  defstruct records: [], last_evaluation: nil, evaluation_time_fun: nil
+  defstruct records: [], last_evaluation: nil, evaluation_time_fun: nil, wait_for_update: nil
 
   # Server functions
   @spec start_link([]) :: {:ok, pid()}
@@ -62,20 +64,22 @@ defmodule Drizzle do
   def start_link(%{
     records:             records,
     last_evaluation:     last_evaluation,
-    evaluation_time_fun: evaluation_time_fun}) when is_list(records) do
-    GenServer.start_link(__MODULE__, [records, last_evaluation_to_time(last_evaluation), evaluation_time_fun], [name: __MODULE__])
+    evaluation_time_fun: evaluation_time_fun,
+    wait_for_update: wait_for_update}) when is_list(records) do
+    GenServer.start_link(__MODULE__, [records, last_evaluation_to_time(last_evaluation), evaluation_time_fun, wait_for_update], [name: __MODULE__])
   end
   def start_link(_), do: {:error, :invalid_config}
 
-  def init([records, last_evaluation, evaluation_time_fun]) do
+  def init([records, last_evaluation, evaluation_time_fun, wait_for_update]) do
     # we are setting the last time to one second in the past
     # so we start with the current second
     initial_state = %Drizzle{
       records:             Parser.parse_records!(records),
       last_evaluation:     last_evaluation_to_time(last_evaluation),
-      evaluation_time_fun: evaluation_time_fun || fn(_) -> :noop end
+      evaluation_time_fun: evaluation_time_fun || fn(_) -> :noop end,
+      wait_for_update: (wait_for_update == true)
     }
-    schedule_evaluation(0)
+    unless initial_state.wait_for_update, do: schedule_evaluation(0)
     {:ok, initial_state}
   end
 
@@ -90,7 +94,8 @@ defmodule Drizzle do
   def handle_cast({:update_records, records}, state) do
     case Parser.parse_records(records) do
       {:ok, records} ->
-        next_state = %{state | records: records}
+        if state.wait_for_update, do: schedule_evaluation(0)
+        next_state = %{state | records: records, wait_for_update: false}
         {:noreply, next_state}
       {:error, _} ->
         {:noreply, state}
