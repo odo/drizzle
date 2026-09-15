@@ -123,7 +123,7 @@ defmodule DrizzleTest do
       {:ok, init_state} = Drizzle.init([[record], start, nil, true])
       refute_receive :evaluate
       with_mocks [{Drizzle.Time, [:passthrough], [now: fn() -> {now, 0} end]}] do
-        {:noreply, next_state} = Drizzle.handle_cast({:update_records, [record]}, init_state)
+        {:reply, :ok, next_state} = Drizzle.handle_call({:update_records, [record]}, self(), init_state)
         assert_receive :evaluate
         {:noreply, _next_state} = Drizzle.handle_info(:evaluate, next_state)
         assert_receive :trigger
@@ -191,7 +191,7 @@ defmodule DrizzleTest do
       }
 
       {:ok, init_state} = Drizzle.init([[], nil, nil, false])
-      {:noreply, next_state} = Drizzle.handle_cast({:update_records, [broken_record]}, init_state)
+      {:reply, {:error, :time_zone_not_found}, next_state} = Drizzle.handle_call({:update_records, [broken_record]}, self(), init_state)
       assert init_state == next_state
     end
 
@@ -205,7 +205,7 @@ defmodule DrizzleTest do
       }
 
       {:ok, init_state} = Drizzle.init([[], nil, nil, false])
-      {:noreply, next_state} = Drizzle.handle_cast({:update_records, [record]}, init_state)
+      {:reply, :ok, next_state} = Drizzle.handle_call({:update_records, [record]}, self(), init_state)
       assert 1 == length(next_state.records)
     end
 

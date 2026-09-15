@@ -87,18 +87,18 @@ defmodule Drizzle do
   @spec update([Record.t()]) :: :ok
   @doc "Update the crontab during runtime."
   def update(records) when is_list(records) do
-    GenServer.cast(__MODULE__, {:update_records, records})
+    GenServer.call(__MODULE__, {:update_records, records})
   end
 
   # Callbacks
-  def handle_cast({:update_records, records}, state) do
+  def handle_call({:update_records, records}, _from, state) do
     case Parser.parse_records(records) do
       {:ok, records} ->
         if state.wait_for_update, do: schedule_evaluation(0)
         next_state = %{state | records: records, wait_for_update: false}
-        {:noreply, next_state}
-      {:error, _} ->
-        {:noreply, state}
+        {:reply, :ok, next_state}
+      {:error, error} ->
+        {:reply, {:error, error}, state}
       end
   end
 
