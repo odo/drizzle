@@ -4,7 +4,7 @@ defmodule Drizzle.MixProject do
   def project do
     [
       app: :drizzle,
-      version: "0.1.5",
+      version: "0.2.0",
       elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       package: package(),
@@ -24,7 +24,7 @@ defmodule Drizzle.MixProject do
   defp deps do
     [
       {:cron, "~> 0.1"},
-      {:tz, "~> 0.28"},
+      {:tz, "~> 0.28", only: :test},
       {:mock, "~> 0.3.0", only: :test},
       {:ex_doc, ">= 0.0.0", only: :dev, runtime: false}
     ]

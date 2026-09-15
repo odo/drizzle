@@ -99,7 +99,7 @@ by adding `drizzle` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:drizzle, "~> 0.1.5"}
+    {:drizzle, "~> 0.2.0"}
   ]
 end
 ```
