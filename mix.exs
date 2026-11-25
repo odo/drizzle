@@ -4,8 +4,8 @@ defmodule Drizzle.MixProject do
   def project do
     [
       app: :drizzle,
-      version: "0.3.0",
-      elixir: "~> 1.17",
+      version: "0.3.1",
+      elixir: "~> 1.18",
       start_permanent: Mix.env() == :prod,
       package: package(),
       deps: deps()
