@@ -39,7 +39,7 @@ defmodule Drizzle.Parser do
     parse_record(%{crontab: crontab, time_zone: "Etc/UTC", module: module, function: function, args: args})
   end
   defp parse_record(%{crontab: crontab, time_zone: time_zone, module: module, function: function, args: args})
-    when is_binary(crontab) and is_binary(time_zone) and is_atom(module) and is_atom(module) and is_list(args) do
+    when is_binary(crontab) and is_binary(time_zone) and is_atom(module) and is_atom(function) and is_list(args) do
     with {:ok, _} <- DateTime.from_naive(@validation_time, time_zone),
         {:ok, crontab} <- Cron.new(crontab) do 
           {:ok,
